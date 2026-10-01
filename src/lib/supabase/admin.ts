@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/database.types";
 import { publicEnv } from "@/lib/env";
 
 /**
@@ -13,7 +14,7 @@ export function createAdminClient() {
     throw new Error("Missing environment variable: SUPABASE_SERVICE_ROLE_KEY. See .env.example.");
   }
 
-  return createClient(publicEnv.supabaseUrl, serviceRoleKey, {
+  return createClient<Database>(publicEnv.supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }

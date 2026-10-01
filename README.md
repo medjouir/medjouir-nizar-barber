@@ -38,17 +38,52 @@ npm run build
 | `NEXT_PUBLIC_SITE_URL` | public | Canonical URL used for the booking link and QR code |
 | `SUPABASE_SERVICE_ROLE_KEY` | server only | Used only in server code for validated public operations. Never prefix with `NEXT_PUBLIC_`. |
 
+## Database setup (Supabase)
+
+Project: `cuunoajwxymacyfmnatm`. Run once, in order, in **Supabase → SQL Editor**:
+
+1. `supabase/migrations/20261001120000_core_schema.sql`
+2. `supabase/migrations/20261001120100_security.sql`
+3. `supabase/seed.sql` — first set `v_owner_email` to Nizar's login email.
+
+Then in **Authentication**:
+
+- **Sign In / Providers → Email**: turn off *Allow new users to sign up* (only Nizar logs in).
+- **Users → Add user**: Nizar's email + password, with *Auto Confirm User* checked.
+  The account is linked to the `nizar` barber automatically.
+- **URL Configuration**: Site URL = production URL; add `<site>/auth/confirm` to Redirect URLs.
+
+Sample data can be removed with `supabase/seed-reset.sql` and recreated by re-running `seed.sql`.
+
+### Database tests
+
+`npm run test:db` applies a Supabase stub, the migrations and the seed to a throwaway
+local PostgreSQL database and checks constraints, double-booking protection and RLS.
+Needs PostgreSQL 16 with `btree_gist`/`pgcrypto` and `PGHOST`/`PGPORT`/`PGUSER` set.
+
+See [docs/architecture.md](docs/architecture.md) for the scheduling and security decisions.
+
 ## Project structure
 
 ```
 src/
   app/                  routes (App Router), global tokens, root layout
   components/ui/        Button, Card, Progress, PageShell, Spinner
+  app/login/            Nizar's sign-in, password reset
+  app/dashboard/        private area (guarded by requireBarber)
+  proxy.ts              session refresh + /dashboard redirect
+  lib/auth.ts           getCurrentBarber / requireBarber
+  lib/database.types.ts typed schema for the Supabase client
   lib/env.ts            typed env access
   lib/supabase/
     client.ts           browser client (anon key, RLS)
     server.ts           server client bound to Nizar's auth cookies (RLS)
     admin.ts            service-role client, server-only
+    proxy.ts            session refresh helper
+supabase/
+  migrations/           schema, constraints, RLS
+  seed.sql              dev seed (re-runnable), seed-reset.sql removes sample data
+tests/db/               database test suite
 ```
 
 ## Design tokens
