@@ -1,12 +1,15 @@
 import "server-only";
 import { randomBytes, randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
+import { isSupabaseConfigured } from "@/lib/env";
 import { validateHours, validateProfile, validateRules, validateService } from "@/lib/settings";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { DateException } from "@/lib/scheduling/availability";
 import { isLocalDate } from "@/lib/scheduling/time";
 import { buildDemoData, DEMO_BARBER_ID } from "./demo-data";
 import { MemoryStore } from "./memory-store";
-import type { Appointment, Client } from "./types";
+import { SupabaseStore } from "./supabase-store";
+import type { Appointment, BookingStore, Client } from "./types";
 
 /**
  * Demo store: example data + the visitor's own bookings (and changes made to
@@ -87,7 +90,19 @@ function applyConfig(data: ReturnType<typeof buildDemoData>, raw: string | undef
   }
 }
 
-export async function getBookingStore(now = Date.now()) {
+/**
+ * The app's data source: Supabase when it is configured (URL, anon key and
+ * server-only service-role key), otherwise the demo store.
+ */
+export async function getBookingStore(now = Date.now()): Promise<{ store: BookingStore; commit: () => Promise<void> }> {
+  if (isSupabaseConfigured() && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    // Writes are already persisted by Supabase; nothing to commit.
+    return { store: new SupabaseStore(createAdminClient()), commit: async () => {} };
+  }
+  return getDemoStore(now);
+}
+
+async function getDemoStore(now: number) {
   const jar = await cookies();
   const visitor = readState(jar.get(COOKIE)?.value);
   const data = buildDemoData(now);

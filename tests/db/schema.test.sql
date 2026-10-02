@@ -234,4 +234,77 @@ begin
     = (select id from auth.users where email = 'link@example.com'), 'confirmed user linked';
 end $$;
 
+
+\echo '--- booking functions: atomic, buffer-aware, server-only'
+do $$
+declare
+  b uuid := (select id from public.barbers where slug = 'nizar');
+  s uuid := (select id from public.services where barber_id = b and name = 'Coupe');
+  t timestamptz := date_trunc('hour', now()) + interval '20 days';
+  r public.appointments;
+  r2 public.appointments;
+  n_clients int;
+begin
+  r := public.book_appointment(b, s, t, 60, 'Fn Client', '+212699000001', 'note');
+  assert r.id is not null and r.end_at = t + interval '1 hour', 'booked';
+
+  -- Same slot again → null, no exception, no new appointment.
+  assert (public.book_appointment(b, s, t + interval '30 minutes', 60, 'Other', '+212699000002', null)).id is null, 'overlap refused';
+
+  -- Same phone reuses the client.
+  select count(*) into n_clients from public.clients where phone = '+212699000001';
+  r2 := public.book_appointment(b, s, t + interval '2 hours', 60, 'Fn Client again', '+212699000001', null);
+  assert r2.client_id = r.client_id, 'client reused';
+  assert (select count(*) from public.clients where phone = '+212699000001') = n_clients, 'no duplicate client';
+
+  -- Buffer is enforced under the lock.
+  update public.barbers set buffer_minutes = 15 where id = b;
+  assert (public.book_appointment(b, s, t + interval '70 minutes', 30, 'Buf', '+212699000003', null)).id is null, 'buffer after refused';
+  assert (public.book_appointment(b, s, t + interval '75 minutes', 30, 'Buf', '+212699000003', null)).id is not null, 'buffer respected ok';
+  update public.barbers set buffer_minutes = 0 where id = b;
+
+  -- Move: may overlap its own old time, not others; keeps duration.
+  r := public.move_appointment(r.public_token, t + interval '15 minutes');
+  assert r.start_at = t + interval '15 minutes' and r.end_at = t + interval '75 minutes', 'moved onto own slot';
+  assert (public.move_appointment(r.public_token, t + interval '2 hours')).id is null, 'cannot move onto another booking';
+  assert (public.move_appointment(repeat('0', 64), t)).id is null, 'unknown token';
+end $$;
+
+begin;
+set local role anon;
+do $$ begin
+  begin
+    perform public.book_appointment(gen_random_uuid(), gen_random_uuid(), now(), 60, 'x', '+212611111111', null);
+    raise exception 'anon called book_appointment';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+rollback;
+
+begin;
+set local role authenticated;
+do $$ begin
+  begin
+    perform public.move_appointment(repeat('0', 64), now());
+    raise exception 'authenticated called move_appointment';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+rollback;
+
+do $$
+declare b uuid := (select id from public.barbers where slug = 'nizar');
+begin
+  perform public.replace_business_hours(b, '[{"dayOfWeek":1,"start":"10:00","end":"12:00"},{"dayOfWeek":1,"start":"13:00","end":"19:00"}]');
+  assert (select count(*) from public.business_hours where barber_id = b) = 2, 'hours replaced';
+  begin
+    perform public.replace_business_hours(b, '[{"dayOfWeek":1,"start":"10:00","end":"12:00"},{"dayOfWeek":1,"start":"11:00","end":"19:00"}]');
+    raise exception 'overlapping hours accepted';
+  exception when exclusion_violation then null;
+  end;
+  assert (select count(*) from public.business_hours where barber_id = b) = 2, 'failed replace left hours untouched';
+end $$;
+
+\echo 'BOOKING FUNCTION TESTS PASSED'
+
 \echo 'ALL DATABASE TESTS PASSED'

@@ -121,7 +121,25 @@ export type Database = {
       >;
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      book_appointment: {
+        Args: {
+          p_barber_id: string;
+          p_service_id: string;
+          p_start: string;
+          p_duration: number;
+          p_full_name: string;
+          p_phone: string;
+          p_note: string | null;
+        };
+        Returns: AppointmentRow;
+      };
+      move_appointment: { Args: { p_token: string; p_start: string }; Returns: AppointmentRow };
+      replace_business_hours: {
+        Args: { p_barber_id: string; p_hours: { dayOfWeek: number; start: string; end: string }[] };
+        Returns: undefined;
+      };
+    };
     Enums: {
       appointment_status: AppointmentStatus;
       schedule_exception_type: ScheduleExceptionType;
