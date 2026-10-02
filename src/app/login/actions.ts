@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 
 export type FormState = { error?: string; info?: string };
@@ -21,6 +22,9 @@ function field(formData: FormData, name: string): string {
 }
 
 export async function signIn(_prev: FormState, formData: FormData): Promise<FormState> {
+  // Demo mode: no real accounts yet.
+  if (!isSupabaseConfigured()) redirect("/dashboard");
+
   const email = field(formData, "email").toLowerCase();
   const password = formData.get("password");
   if (!email || typeof password !== "string" || !password) return { error: COPY.invalid };
@@ -44,6 +48,7 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
 export async function requestPasswordReset(_prev: FormState, formData: FormData): Promise<FormState> {
   const email = field(formData, "email").toLowerCase();
   if (!email) return { error: COPY.invalid };
+  if (!isSupabaseConfigured()) return { info: COPY.resetSent };
 
   const origin = (await headers()).get("origin") ?? process.env.NEXT_PUBLIC_SITE_URL ?? "";
   const supabase = await createClient();
@@ -58,6 +63,7 @@ export async function requestPasswordReset(_prev: FormState, formData: FormData)
 export async function updatePassword(_prev: FormState, formData: FormData): Promise<FormState> {
   const password = formData.get("password");
   if (typeof password !== "string" || password.length < 8) return { error: COPY.passwordTooShort };
+  if (!isSupabaseConfigured()) redirect("/dashboard");
 
   const supabase = await createClient();
   const { error } = await supabase.auth.updateUser({ password });

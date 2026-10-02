@@ -26,6 +26,7 @@ Checks:
 ```bash
 npm run typecheck
 npm run lint
+npm test          # unit tests: availability engine, booking service, phone, formatting
 npm run build
 ```
 
@@ -37,6 +38,17 @@ npm run build
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | public | Anon/publishable key — protected by RLS |
 | `NEXT_PUBLIC_SITE_URL` | public | Canonical URL used for the booking link and QR code |
 | `SUPABASE_SERVICE_ROLE_KEY` | server only | Used only in server code for validated public operations. Never prefix with `NEXT_PUBLIC_`. |
+
+## Demo mode (current)
+
+Until Supabase is connected (`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+unset), the app runs on built-in example data (`src/lib/booking/demo-data.ts`, mirroring
+`supabase/seed.sql`). Bookings a visitor makes are kept in an httpOnly cookie in their own
+browser, so each tester sees the example data plus their own bookings. `/login` lets anyone
+in and `/dashboard` shows the example barber. Never ship real clients on demo mode.
+
+Public routes: `/` → `/nizar` (landing) → `/nizar/7jez` (booking flow) →
+`/manage/[token]` (confirmation, reschedule, cancel; `.../calendar` downloads an .ics).
 
 ## Database setup (Supabase)
 

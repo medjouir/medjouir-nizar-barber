@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { isSupabaseConfigured } from "@/lib/env";
 import { updateSession } from "@/lib/supabase/proxy";
 
 /**
@@ -7,6 +8,9 @@ import { updateSession } from "@/lib/supabase/proxy";
  * requireBarber() in the dashboard layout and RLS in the database.
  */
 export async function proxy(request: NextRequest) {
+  // Demo mode: no Supabase, no session to refresh.
+  if (!isSupabaseConfigured()) return NextResponse.next();
+
   const { response, user } = await updateSession(request);
 
   if (!user) {

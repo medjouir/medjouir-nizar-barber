@@ -1,4 +1,5 @@
-import type { ButtonHTMLAttributes } from "react";
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes } from "react";
+import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { Spinner } from "./spinner";
 
@@ -13,6 +14,15 @@ const variants: Record<Variant, string> = {
   danger:
     "bg-transparent text-danger font-medium border border-line active:bg-surface disabled:text-subtle",
 };
+
+export function buttonClasses(variant: Variant = "primary", className?: string) {
+  return cn(
+    "inline-flex h-control w-full select-none items-center justify-center gap-2 rounded-card px-5 text-body",
+    "transition-colors duration-200 ease-smooth disabled:cursor-not-allowed",
+    variants[variant],
+    className,
+  );
+}
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: Variant;
@@ -34,15 +44,29 @@ export function Button({
       type={type}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
-      className={cn(
-        "inline-flex h-control w-full select-none items-center justify-center gap-2 rounded-card px-5 text-body",
-        "transition-colors duration-200 ease-smooth disabled:cursor-not-allowed",
-        variants[variant],
-        className,
-      )}
+      className={buttonClasses(variant, className)}
       {...props}
     >
       {loading ? <Spinner /> : children}
     </button>
+  );
+}
+
+type ButtonLinkProps = AnchorHTMLAttributes<HTMLAnchorElement> & { href: string; variant?: Variant; external?: boolean };
+
+/** A link that looks like a Button. `external` opens in a new tab (maps, calendar). */
+export function ButtonLink({ href, variant = "primary", external, className, children, ...props }: ButtonLinkProps) {
+  const classes = buttonClasses(variant, className);
+  if (external) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className={classes} {...props}>
+        {children}
+      </a>
+    );
+  }
+  return (
+    <Link href={href} className={classes} {...props}>
+      {children}
+    </Link>
   );
 }

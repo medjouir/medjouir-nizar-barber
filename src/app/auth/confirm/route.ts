@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
+import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -8,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
  * `token_hash` link (works across browsers/devices).
  */
 export async function GET(request: NextRequest) {
+  if (!isSupabaseConfigured()) return NextResponse.redirect(new URL("/login", request.url), { status: 303 });
   const { searchParams } = request.nextUrl;
   const next = safeNext(searchParams.get("next"));
   const supabase = await createClient();

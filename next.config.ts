@@ -19,6 +19,10 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: process.cwd(),
   },
+  async redirects() {
+    // Single-barber V0.1: the root opens Nizar's booking page.
+    return [{ source: "/", destination: "/nizar", permanent: false }];
+  },
   async headers() {
     return [
       {

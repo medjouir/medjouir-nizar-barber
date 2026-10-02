@@ -20,3 +20,11 @@ export const publicEnv = {
     return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   },
 };
+
+/**
+ * Supabase is wired only when its URL and key are set. Until then the app runs
+ * on built-in example data (demo mode) and the barber area needs no login.
+ */
+export function isSupabaseConfigured(): boolean {
+  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+}

@@ -26,6 +26,30 @@ See `supabase/migrations/`. Tables: `barbers`, `services`, `business_hours`,
 - Appointments and clients are never hard-deleted. Cancelling sets
   `status = 'cancelled'` and `cancelled_at`.
 
+## Availability engine
+
+`src/lib/scheduling/availability.ts` is pure and I/O-free. For a barber, service
+and date it offers start times on the slot grid (multiples of
+`slot_interval_minutes` from local midnight) where:
+
+1. the whole service fits inside one open window — regular hours plus
+   `available` exceptions, minus `blocked` intervals; `closed` (or a whole-day
+   block) removes the day;
+2. it keeps `buffer_minutes` of clearance before and after every confirmed or
+   completed appointment;
+3. it starts at least `minimum_booking_notice_minutes` after now;
+4. its date is between today and today + `booking_horizon_days` − 1.
+
+Wall-clock values are converted with `Intl` (`src/lib/scheduling/time.ts`), so
+Morocco's Ramadan switch from GMT+1 to GMT+0 is handled without hardcoded
+offsets. Rescheduling passes `excludeAppointmentId` so an appointment never
+collides with itself and keeps its original duration.
+
+`src/lib/booking/service.ts` wraps the engine for the use cases (create,
+reschedule, cancel, token lookup) behind a `BookingStore` interface. Every write
+recomputes availability server-side first; when the slot is gone the client gets
+"Had lwe9t mab9ach disponible." with the nearest alternatives.
+
 ## Double-booking protection
 
 1. **Database guarantee (always on).** `appointments_no_overlap` is a GiST
@@ -35,9 +59,9 @@ See `supabase/migrations/`. Tables: `barbers`, `services`, `business_hours`,
    application code does. Cancelled and no-show rows don't occupy time, so a
    cancellation immediately reopens the slot. `[)` lets back-to-back
    appointments (10:00–11:00, 11:00–12:00) coexist.
-2. **Server-side recheck (Phase 4).** On confirmation the server recomputes
-   availability (hours, exceptions, buffer, notice, horizon) inside one
-   transaction serialized per barber, then inserts. If the constraint still
+2. **Server-side recheck.** On confirmation the server recomputes availability
+   (hours, exceptions, buffer, notice, horizon) and only then inserts. With
+   Supabase this runs in one transaction serialized per barber. If the constraint still
    fires (lost race), the client gets "Had lwe9t mab9ach disponible." with
    nearby alternatives.
 
