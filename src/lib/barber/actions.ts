@@ -4,7 +4,16 @@ import { revalidatePath } from "next/cache";
 import { unstable_rethrow } from "next/navigation";
 import { requireBarber } from "@/lib/auth";
 import { timezoneOf, toDateChoices, toSlotChoices, type DateChoice, type SlotChoice } from "@/lib/booking/choices";
-import { createBooking, listDateOptions, listSlots } from "@/lib/booking/service";
+import {
+  cancelByToken,
+  createBooking,
+  listDateOptions,
+  listRescheduleDates,
+  listRescheduleSlots,
+  listSlots,
+  markVisit,
+  rescheduleByToken,
+} from "@/lib/booking/service";
 import { getBookingStore } from "@/lib/booking/store";
 
 /*
@@ -74,6 +83,70 @@ export async function createManualAppointment(input: {
     return { ok: false, reason: "error" };
   } catch (error) {
     unstable_rethrow(error); // requireBarber() redirects by throwing
+    return { ok: false, reason: "error" };
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Appointment actions from Planning (by appointment id, scoped to the barber).
+ * ------------------------------------------------------------------------- */
+
+/** Resolves an appointment id of the signed-in barber to its token. */
+async function ownedAppointment(id: string) {
+  const ctx = await context();
+  const barber = await ctx.store.getBarberBySlug(ctx.slug);
+  const appointment = barber ? await ctx.store.getAppointment(barber.id, str(id, 80)) : null;
+  return { ...ctx, token: appointment?.publicToken ?? null };
+}
+
+export type ActionResult = { ok: boolean };
+
+export async function markAppointment(id: string, status: "completed" | "no_show"): Promise<ActionResult> {
+  if (status !== "completed" && status !== "no_show") return { ok: false };
+  const { token, store, commit, now } = await ownedAppointment(id);
+  if (!token || !(await markVisit(store, token, status, now))) return { ok: false };
+  await commit();
+  revalidatePath("/dashboard", "layout");
+  return { ok: true };
+}
+
+export async function cancelAsBarber(id: string): Promise<ActionResult> {
+  const { token, store, commit, now } = await ownedAppointment(id);
+  if (!token || !(await cancelByToken(store, token, now, "barber"))) return { ok: false };
+  await commit();
+  revalidatePath("/dashboard", "layout");
+  return { ok: true };
+}
+
+export async function fetchMoveDates(id: string): Promise<DateChoice[] | null> {
+  const { token, store, now, tz } = await ownedAppointment(id);
+  if (!token) return null;
+  return toDateChoices(await listRescheduleDates(store, token, now, "barber"), now, tz);
+}
+
+export async function fetchMoveSlots(id: string, date: string): Promise<SlotChoice[] | null> {
+  const { token, store, now, tz } = await ownedAppointment(id);
+  if (!token) return null;
+  const slots = await listRescheduleSlots(store, token, str(date, 10), now, "barber");
+  return slots && toSlotChoices(slots, now, tz);
+}
+
+export async function moveAsBarber(id: string, startAt: string): Promise<ManualResult> {
+  try {
+    const { token, store, commit, now, tz } = await ownedAppointment(id);
+    if (!token) return { ok: false, reason: "error" };
+    const result = await rescheduleByToken(store, token, str(startAt, 40), now, "barber");
+    if (result.ok) {
+      await commit();
+      revalidatePath("/dashboard", "layout");
+      return { ok: true };
+    }
+    if (result.reason === "slot_taken") {
+      return { ok: false, reason: "slot_taken", alternatives: toSlotChoices(result.alternatives, now, tz) };
+    }
+    return { ok: false, reason: "error" };
+  } catch (error) {
+    unstable_rethrow(error);
     return { ok: false, reason: "error" };
   }
 }

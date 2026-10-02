@@ -6,9 +6,10 @@ import { MemoryStore } from "./memory-store";
 import type { Appointment, Client } from "./types";
 
 /**
- * Demo store: example data + the visitor's own bookings, which are kept in an
- * httpOnly cookie so they survive across serverless instances. Each visitor
- * only ever sees their own bookings on top of the example data.
+ * Demo store: example data + the visitor's own bookings (and changes made to
+ * example appointments), kept in an httpOnly cookie so they survive across
+ * serverless instances. Each visitor only ever sees their own changes on top
+ * of the example data.
  *
  * The Supabase-backed store replaces this when the database is connected.
  */
@@ -16,18 +17,30 @@ const COOKIE = "nizar_demo";
 const MAX_APPOINTMENTS = 15;
 const VISITOR_PREFIX = "v-";
 
-type VisitorState = { clients: Client[]; appointments: Appointment[] };
+/** Changed fields of an example (seed) appointment. */
+type Override = Pick<Appointment, "status" | "startAt" | "endAt" | "cancelledAt">;
+type VisitorState = { clients: Client[]; appointments: Appointment[]; overrides: Record<string, Override> };
+
+const STATUSES = new Set(["confirmed", "completed", "cancelled", "no_show"]);
 
 function readState(raw: string | undefined): VisitorState {
+  const empty = { clients: [], appointments: [], overrides: {} };
   try {
     const parsed = JSON.parse(raw ?? "") as Partial<VisitorState>;
     const ok = (x: { id?: unknown }) => typeof x?.id === "string" && x.id.startsWith(VISITOR_PREFIX);
+    const overrides: Record<string, Override> = {};
+    for (const [id, o] of Object.entries(parsed.overrides ?? {})) {
+      if (o && STATUSES.has(o.status) && !Number.isNaN(Date.parse(o.startAt)) && !Number.isNaN(Date.parse(o.endAt))) {
+        overrides[id] = { status: o.status, startAt: o.startAt, endAt: o.endAt, cancelledAt: o.cancelledAt ?? null };
+      }
+    }
     return {
       clients: Array.isArray(parsed.clients) ? parsed.clients.filter(ok) : [],
       appointments: Array.isArray(parsed.appointments) ? parsed.appointments.filter(ok) : [],
+      overrides,
     };
   } catch {
-    return { clients: [], appointments: [] };
+    return empty;
   }
 }
 
@@ -35,6 +48,8 @@ export async function getBookingStore(now = Date.now()) {
   const jar = await cookies();
   const visitor = readState(jar.get(COOKIE)?.value);
   const data = buildDemoData(now);
+  const seed = new Map(data.appointments.map((a) => [a.id, { ...a }]));
+  for (const a of data.appointments) Object.assign(a, visitor.overrides[a.id] ?? {});
   data.clients.push(...visitor.clients.map((c) => ({ ...c, barberId: DEMO_BARBER_ID })));
   data.appointments.push(...visitor.appointments.map((a) => ({ ...a, barberId: DEMO_BARBER_ID })));
 
@@ -53,7 +68,15 @@ export async function getBookingStore(now = Date.now()) {
     const clients = data.clients
       .filter((c) => c.id.startsWith(VISITOR_PREFIX) && clientIds.has(c.id))
       .map(({ barberId, ...c }) => c);
-    jar.set(COOKIE, JSON.stringify({ clients, appointments }), {
+    const overrides: Record<string, Override> = {};
+    for (const a of data.appointments) {
+      const original = seed.get(a.id);
+      if (!original) continue;
+      if (a.status !== original.status || a.startAt !== original.startAt || a.endAt !== original.endAt) {
+        overrides[a.id] = { status: a.status, startAt: a.startAt, endAt: a.endAt, cancelledAt: a.cancelledAt };
+      }
+    }
+    jar.set(COOKIE, JSON.stringify({ clients, appointments, overrides }), {
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",

@@ -75,4 +75,8 @@ export interface BookingStore {
     endAt: string,
   ): Promise<{ ok: true; appointment: Appointment } | { ok: false; reason: "conflict" | "not_found" }>;
   cancelAppointment(token: string, at: string): Promise<Appointment | null>;
+  /** Barber-side lookup by id, scoped to the barber. */
+  getAppointment(barberId: string, id: string): Promise<Appointment | null>;
+  /** Marks a past or ongoing visit: completed ("Tsalat") or no_show ("Ma jach"). */
+  setStatus(token: string, status: "completed" | "no_show"): Promise<Appointment | null>;
 }

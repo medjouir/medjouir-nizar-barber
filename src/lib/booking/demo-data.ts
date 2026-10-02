@@ -66,8 +66,8 @@ export function buildDemoData(now: number): MemoryData {
           { dayOfWeek, start: "14:00", end: "20:00" },
         ]),
         exceptions: [
-          { date: addDays(today, 1), type: "blocked", start: "17:00", end: "18:30" },
-          { date: addDays(today, 5), type: "closed" },
+          { date: addDays(today, 1), type: "blocked", start: "17:00", end: "18:30", reason: "Rendez-vous chkhsi" },
+          { date: addDays(today, 5), type: "closed", reason: "3otla" },
         ],
       },
     },

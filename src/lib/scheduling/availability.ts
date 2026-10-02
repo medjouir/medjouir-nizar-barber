@@ -43,6 +43,8 @@ export type DateException = {
   /** Both null/undefined = whole day. */
   start?: string | null;
   end?: string | null;
+  /** Private note (barber only). Ignored by the engine; never sent to public pages. */
+  reason?: string | null;
 };
 
 export type ExistingAppointment = {

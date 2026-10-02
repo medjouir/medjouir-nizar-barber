@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { zonedTimeToInstant } from "@/lib/scheduling/time";
 import { MemoryStore } from "./memory-store";
-import { cancelByToken, createBooking, getByToken, listDateOptions, listSlots, rescheduleByToken } from "./service";
+import { cancelByToken, createBooking, getByToken, listDateOptions, listSlots, markVisit, rescheduleByToken } from "./service";
 
 const TZ = "Africa/Casablanca";
 const NOW = Date.parse("2026-10-02T07:00:00Z"); // Friday 08:00 local
@@ -177,5 +177,37 @@ describe("date options", () => {
     const options = await listDateOptions(store, "nizar", "coupe", NOW);
     expect(options).toHaveLength(30);
     expect(options!.filter((o) => o.available).map((o) => o.date).slice(0, 2)).toEqual(["2026-10-05", "2026-10-12"]);
+  });
+});
+
+describe("barber management", () => {
+  it("marks a visit completed or no-show, only from confirmed", async () => {
+    const booked = await createBooking(store, request(), NOW);
+    if (!booked.ok) throw new Error("booking failed");
+    const token = booked.appointment.publicToken;
+    expect(await markVisit(store, token, "completed", NOW)).toMatchObject({ status: "completed" });
+    expect(await markVisit(store, token, "no_show", NOW)).toBeNull();
+  });
+
+  it("a no-show frees the slot; a completed visit keeps it", async () => {
+    const a = await createBooking(store, request(), NOW);
+    if (!a.ok) throw new Error("booking failed");
+    await markVisit(store, a.appointment.publicToken, "no_show", NOW);
+    const slots = await listSlots(store, { slug: "nizar", serviceId: "coupe", date: DAY, now: NOW });
+    expect(slots!.map((s) => s.time)).toContain("10:00");
+  });
+
+  it("can reschedule and cancel within the notice period, unlike the client", async () => {
+    const booked = await createBooking(store, request({ startAt: at("11:00") }), NOW);
+    if (!booked.ok) throw new Error("booking failed");
+    const token = booked.appointment.publicToken;
+    const late = Date.parse(at("11:15")); // appointment already started
+    expect(await rescheduleByToken(store, token, at("12:00"), late)).toMatchObject({ reason: "not_changeable" });
+    expect(await rescheduleByToken(store, token, at("12:00"), late, "barber")).toMatchObject({
+      ok: true,
+      appointment: { startAt: at("12:00") },
+    });
+    // Barber mode has no minimum notice: 12:00 is bookable at 11:45.
+    expect(await cancelByToken(store, token, Date.parse(at("11:45")))).toMatchObject({ status: "cancelled" });
   });
 });

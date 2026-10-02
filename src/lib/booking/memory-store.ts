@@ -104,6 +104,17 @@ export class MemoryStore implements BookingStore {
     return appointment;
   }
 
+  async getAppointment(barberId: string, id: string) {
+    return this.data.appointments.find((a) => a.barberId === barberId && a.id === id) ?? null;
+  }
+
+  async setStatus(token: string, status: "completed" | "no_show") {
+    const appointment = this.data.appointments.find((a) => a.publicToken === token);
+    if (!appointment) return null;
+    appointment.status = status;
+    return appointment;
+  }
+
   private overlaps(barberId: string, startAt: string, endAt: string, excludeId?: string) {
     const s = Date.parse(startAt);
     const e = Date.parse(endAt);

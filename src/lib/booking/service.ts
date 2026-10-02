@@ -180,7 +180,16 @@ export type ManagedAppointment = {
   changeable: boolean;
 };
 
-export async function getByToken(store: BookingStore, token: string, now: number): Promise<ManagedAppointment | null> {
+/**
+ * "public" (client with the token): only confirmed appointments that haven't
+ * started can be changed. "barber": any confirmed appointment.
+ */
+export async function getByToken(
+  store: BookingStore,
+  token: string,
+  now: number,
+  mode: BookingMode = "public",
+): Promise<ManagedAppointment | null> {
   if (!/^[0-9a-f]{64}$/.test(token)) return null;
   const found = await store.findByToken(token);
   if (!found) return null;
@@ -192,30 +201,36 @@ export async function getByToken(store: BookingStore, token: string, now: number
     appointment,
     service,
     barber,
-    changeable: appointment.status === "confirmed" && Date.parse(appointment.startAt) > now,
+    changeable: appointment.status === "confirmed" && (mode === "barber" || Date.parse(appointment.startAt) > now),
   };
 }
 
 /** Date options for moving an appointment (keeps its duration, ignores itself). */
-export async function listRescheduleDates(store: BookingStore, token: string, now: number) {
-  const managed = await getByToken(store, token, now);
+export async function listRescheduleDates(store: BookingStore, token: string, now: number, mode: BookingMode = "public") {
+  const managed = await getByToken(store, token, now, mode);
   if (!managed?.changeable) return null;
   return getDateOptions({
     durationMinutes: managed.appointment.durationMinutes,
-    schedule: await scheduleFor(store, managed.barber),
+    schedule: await scheduleFor(store, managed.barber, mode),
     now,
     excludeAppointmentId: managed.appointment.id,
   });
 }
 
-export async function listRescheduleSlots(store: BookingStore, token: string, date: LocalDate, now: number) {
+export async function listRescheduleSlots(
+  store: BookingStore,
+  token: string,
+  date: LocalDate,
+  now: number,
+  mode: BookingMode = "public",
+) {
   if (!isLocalDate(date)) return null;
-  const managed = await getByToken(store, token, now);
+  const managed = await getByToken(store, token, now, mode);
   if (!managed?.changeable) return null;
   return getAvailableSlots({
     date,
     durationMinutes: managed.appointment.durationMinutes,
-    schedule: await scheduleFor(store, managed.barber),
+    schedule: await scheduleFor(store, managed.barber, mode),
     now,
     excludeAppointmentId: managed.appointment.id,
   });
@@ -226,8 +241,9 @@ export async function rescheduleByToken(
   token: string,
   startAt: string,
   now: number,
+  mode: BookingMode = "public",
 ): Promise<{ ok: true; appointment: Appointment } | BookingFailure | { ok: false; reason: "not_changeable" }> {
-  const managed = await getByToken(store, token, now);
+  const managed = await getByToken(store, token, now, mode);
   if (!managed) return { ok: false, reason: "invalid_request" };
   if (!managed.changeable) return { ok: false, reason: "not_changeable" };
   if (Number.isNaN(Date.parse(startAt))) return { ok: false, reason: "invalid_request" };
@@ -238,7 +254,7 @@ export async function rescheduleByToken(
     date,
     // The original duration is kept even if the service was edited since.
     durationMinutes: appointment.durationMinutes,
-    schedule: await scheduleFor(store, barber),
+    schedule: await scheduleFor(store, barber, mode),
     now,
     excludeAppointmentId: appointment.id,
   });
@@ -246,7 +262,7 @@ export async function rescheduleByToken(
   const lost = async () => ({
     ok: false as const,
     reason: "slot_taken" as const,
-    alternatives: await alternativesFor(store, barber, appointment.durationMinutes, startAt, now, appointment.id),
+    alternatives: await alternativesFor(store, barber, appointment.durationMinutes, startAt, now, appointment.id, mode),
   });
   if (!slot) return lost();
 
@@ -255,10 +271,17 @@ export async function rescheduleByToken(
   return { ok: true, appointment: moved.appointment };
 }
 
-export async function cancelByToken(store: BookingStore, token: string, now: number) {
-  const managed = await getByToken(store, token, now);
+export async function cancelByToken(store: BookingStore, token: string, now: number, mode: BookingMode = "public") {
+  const managed = await getByToken(store, token, now, mode);
   if (!managed || !managed.changeable) return null;
   return store.cancelAppointment(token, new Date(now).toISOString());
+}
+
+/** Barber: mark a confirmed visit as done ("Tsalat") or missed ("Ma jach"). */
+export async function markVisit(store: BookingStore, token: string, status: "completed" | "no_show", now: number) {
+  const managed = await getByToken(store, token, now, "barber");
+  if (!managed?.changeable) return null;
+  return store.setStatus(token, status);
 }
 
 export { isLocalDate };
