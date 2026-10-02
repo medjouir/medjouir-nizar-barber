@@ -34,15 +34,22 @@ const COPY = {
   error: "Ma9dernach nzido rendez-vous. 3awed jereb.",
 };
 
-export function ManualBookingForm({ services }: { services: Service[] }) {
+export function ManualBookingForm({
+  services,
+  initialClient,
+}: {
+  services: Service[];
+  /** Prefilled from a client profile ("+ Zid rendez-vous"). */
+  initialClient?: { fullName: string; phone: string };
+}) {
   const router = useRouter();
   const [serviceId, setServiceId] = useState<string>();
   const [dates, setDates] = useState<DateChoice[] | null>();
   const [date, setDate] = useState<string>();
   const [slots, setSlots] = useState<SlotChoice[] | null>();
   const [slot, setSlot] = useState<SlotChoice>();
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [fullName, setFullName] = useState(initialClient?.fullName ?? "");
+  const [phone, setPhone] = useState(initialClient?.phone ?? "");
   const [note, setNote] = useState("");
   const [errors, setErrors] = useState<{ name?: string; phone?: string; form?: string }>({});
   const [alternatives, setAlternatives] = useState<SlotChoice[]>();
@@ -103,7 +110,7 @@ export function ManualBookingForm({ services }: { services: Service[] }) {
 
   return (
     <BarberPage>
-      <StepHeader onBack={() => router.push("/dashboard")} />
+      <StepHeader onBack={() => router.back()} />
       <h1 className="text-title font-semibold">{COPY.title}</h1>
 
       <form onSubmit={submit} noValidate className="flex flex-col">

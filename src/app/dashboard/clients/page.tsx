@@ -1,13 +1,20 @@
 import type { Metadata } from "next";
-import { BarberPage } from "@/components/barber/barber-page";
+import { loadBarberWorkspace } from "@/lib/barber/data";
+import { summarizeClients } from "@/lib/clients";
+import { ClientsList } from "./clients-list";
 
 export const metadata: Metadata = { title: "Clients — Nizar" };
 
-// Built in a later phase.
-export default function ClientsPage() {
-  return (
-    <BarberPage>
-      <h1 className="text-title font-semibold">Clients</h1>
-    </BarberPage>
-  );
+async function load() {
+  const ws = await loadBarberWorkspace();
+  return summarizeClients(ws.clients, ws.clientAppointments, Date.now()).map(({ id, fullName, phone, visits }) => ({
+    id,
+    fullName,
+    phone,
+    visits,
+  }));
+}
+
+export default async function ClientsPage() {
+  return <ClientsList clients={await load()} />;
 }

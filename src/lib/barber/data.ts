@@ -1,6 +1,7 @@
 import "server-only";
 import { requireBarber } from "@/lib/auth";
 import { getBookingStore } from "@/lib/booking/store";
+import type { ClientAppointment } from "@/lib/clients";
 import type { DayAppointment } from "@/lib/dashboard";
 
 /**
@@ -37,5 +38,15 @@ export async function loadBarberWorkspace(now = Date.now()) {
     };
   });
 
-  return { account, barber, services, schedule, appointments };
+  const clientAppointments: ClientAppointment[] = schedule.appointments.map((a) => ({
+    id: a.id,
+    clientId: a.clientId,
+    startAt: a.startAt,
+    endAt: a.endAt,
+    durationMinutes: a.durationMinutes,
+    status: a.status,
+    serviceName: serviceById.get(a.serviceId)?.name ?? "—",
+  }));
+
+  return { account, barber, services, schedule, appointments, clients, clientAppointments };
 }
