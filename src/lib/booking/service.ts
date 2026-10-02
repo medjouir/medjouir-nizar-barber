@@ -40,29 +40,49 @@ async function loadContext(store: BookingStore, slug: string, serviceId: string)
   return { barber, service };
 }
 
-async function scheduleFor(store: BookingStore, barber: PublicBarber): Promise<ScheduleInput> {
+/**
+ * "public": the barber's rules as configured.
+ * "barber": Nizar booking manually — no minimum notice (walk-ins), same
+ * opening hours, exceptions and overlap rules.
+ */
+export type BookingMode = "public" | "barber";
+
+async function scheduleFor(store: BookingStore, barber: PublicBarber, mode: BookingMode = "public"): Promise<ScheduleInput> {
   const s = await store.getSchedule(barber.id);
   return {
-    rules: barber.rules,
+    rules: mode === "barber" ? { ...barber.rules, minimumNoticeMinutes: 0 } : barber.rules,
     hours: s.hours,
     exceptions: s.exceptions,
     appointments: s.appointments.map((a) => ({ id: a.id, startAt: a.startAt, endAt: a.endAt, status: a.status })),
   };
 }
 
-export async function listDateOptions(store: BookingStore, slug: string, serviceId: string, now: number) {
+export async function listDateOptions(
+  store: BookingStore,
+  slug: string,
+  serviceId: string,
+  now: number,
+  mode: BookingMode = "public",
+) {
   const ctx = await loadContext(store, slug, serviceId);
   if (!ctx) return null;
   return getDateOptions({
     durationMinutes: ctx.service.durationMinutes,
-    schedule: await scheduleFor(store, ctx.barber),
+    schedule: await scheduleFor(store, ctx.barber, mode),
     now,
   });
 }
 
 export async function listSlots(
   store: BookingStore,
-  params: { slug: string; serviceId: string; date: LocalDate; now: number; excludeAppointmentId?: string },
+  params: {
+    slug: string;
+    serviceId: string;
+    date: LocalDate;
+    now: number;
+    excludeAppointmentId?: string;
+    mode?: BookingMode;
+  },
 ): Promise<Slot[] | null> {
   if (!isLocalDate(params.date)) return null;
   const ctx = await loadContext(store, params.slug, params.serviceId);
@@ -70,7 +90,7 @@ export async function listSlots(
   return getAvailableSlots({
     date: params.date,
     durationMinutes: ctx.service.durationMinutes,
-    schedule: await scheduleFor(store, ctx.barber),
+    schedule: await scheduleFor(store, ctx.barber, params.mode),
     now: params.now,
     excludeAppointmentId: params.excludeAppointmentId,
   });
@@ -84,8 +104,9 @@ async function alternativesFor(
   startAt: string,
   now: number,
   excludeAppointmentId?: string,
+  mode: BookingMode = "public",
 ): Promise<Slot[]> {
-  const schedule = await scheduleFor(store, barber);
+  const schedule = await scheduleFor(store, barber, mode);
   const day = instantToZoned(Date.parse(startAt), barber.rules.timezone).date;
   for (let i = 0; i < 7; i++) {
     const slots = getAvailableSlots({
@@ -109,6 +130,7 @@ export async function createBooking(
   store: BookingStore,
   req: BookingRequest,
   now: number,
+  mode: BookingMode = "public",
 ): Promise<BookingSuccess | BookingFailure> {
   const fullName = req.fullName.trim().replace(/\s+/g, " ");
   if (!fullName || fullName.length > MAX_NAME) return { ok: false, reason: "invalid_name" };
@@ -126,13 +148,16 @@ export async function createBooking(
   const slots = getAvailableSlots({
     date,
     durationMinutes: service.durationMinutes,
-    schedule: await scheduleFor(store, barber),
+    schedule: await scheduleFor(store, barber, mode),
     now,
   });
+  const lost = async () => ({
+    ok: false as const,
+    reason: "slot_taken" as const,
+    alternatives: await alternativesFor(store, barber, service.durationMinutes, req.startAt, now, undefined, mode),
+  });
   const slot = slots.find((s) => Date.parse(s.startAt) === Date.parse(req.startAt));
-  if (!slot) {
-    return { ok: false, reason: "slot_taken", alternatives: await alternativesFor(store, barber, service.durationMinutes, req.startAt, now) };
-  }
+  if (!slot) return lost();
 
   const result = await store.insertAppointment(barber.id, {
     serviceId: service.id,
@@ -142,9 +167,7 @@ export async function createBooking(
     clientNote: note,
     client: { fullName, phone },
   });
-  if (!result.ok) {
-    return { ok: false, reason: "slot_taken", alternatives: await alternativesFor(store, barber, service.durationMinutes, req.startAt, now) };
-  }
+  if (!result.ok) return lost();
 
   return { ok: true, appointment: result.appointment, service, barber };
 }

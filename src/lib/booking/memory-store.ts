@@ -47,6 +47,10 @@ export class MemoryStore implements BookingStore {
     return { ...base, appointments: this.data.appointments.filter((a) => a.barberId === barberId) };
   }
 
+  async listClients(barberId: string): Promise<Client[]> {
+    return this.data.clients.filter((c) => c.barberId === barberId);
+  }
+
   async insertAppointment(barberId: string, data: NewAppointment) {
     if (this.overlaps(barberId, data.startAt, data.endAt)) return { ok: false as const, reason: "conflict" as const };
 

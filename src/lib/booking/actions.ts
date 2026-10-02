@@ -1,8 +1,6 @@
 "use server";
 
-import { fullDateLabel, localDateTime, shortDate, dayName } from "@/lib/format";
-import type { DateOption, Slot } from "@/lib/scheduling/availability";
-import { todayIn } from "@/lib/scheduling/time";
+import { timezoneOf, toDateChoices, toSlotChoices, type DateChoice, type SlotChoice } from "./choices";
 import {
   cancelByToken,
   createBooking,
@@ -14,39 +12,13 @@ import {
 } from "./service";
 import { getBookingStore } from "./store";
 
+export type { DateChoice, SlotChoice } from "./choices";
+
 /*
  * Server Actions for the public booking pages. Inputs are untrusted; every
  * action re-reads data and re-validates through the booking service. Outputs
  * contain only what the visitor needs (no other clients, no private reasons).
  */
-
-export type DateChoice = { date: string; name: string; short: string; available: boolean };
-export type SlotChoice = { startAt: string; time: string; date: string; dateLabel: string };
-
-type Store = Awaited<ReturnType<typeof getBookingStore>>["store"];
-
-/** The barber's timezone, by public slug or by appointment token. */
-async function timezoneOf(store: Store, ref: { slug: string } | { token: string }): Promise<string> {
-  const barber =
-    "slug" in ref
-      ? await store.getBarberBySlug(ref.slug)
-      : await store.findByToken(ref.token).then((f) => (f ? store.getBarberById(f.barberId) : null));
-  return barber?.rules.timezone ?? "Africa/Casablanca";
-}
-
-function toDateChoices(options: DateOption[] | null, now: number, tz: string): DateChoice[] | null {
-  if (!options) return null;
-  const today = todayIn(tz, now);
-  return options.map((o) => ({ date: o.date, name: dayName(o.date, today), short: shortDate(o.date), available: o.available }));
-}
-
-function toSlotChoices(slots: Slot[], now: number, tz: string): SlotChoice[] {
-  const today = todayIn(tz, now);
-  return slots.map((s) => {
-    const { date } = localDateTime(s.startAt, tz);
-    return { startAt: s.startAt, time: s.time, date, dateLabel: fullDateLabel(date, today) };
-  });
-}
 
 const str = (v: unknown, max = 200) => (typeof v === "string" ? v.slice(0, max) : "");
 

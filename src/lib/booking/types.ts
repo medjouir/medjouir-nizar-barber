@@ -61,6 +61,8 @@ export interface BookingStore {
   getBarberById(id: string): Promise<PublicBarber | null>;
   listServices(barberId: string): Promise<Service[]>;
   getSchedule(barberId: string): Promise<BarberSchedule>;
+  /** Barber-side only (never exposed to public pages). */
+  listClients(barberId: string): Promise<Client[]>;
   /** Creates or reuses the client (same barber + phone) and inserts the appointment. */
   insertAppointment(
     barberId: string,
