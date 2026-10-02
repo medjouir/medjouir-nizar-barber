@@ -207,9 +207,10 @@ describe("booking horizon", () => {
 });
 
 describe("timezone", () => {
-  it("returns UTC instants that match local wall-clock times", () => {
-    const [first] = getAvailableSlots({ date: DAY, durationMinutes: 60, schedule: schedule(), now: NOW });
-    expect(first).toEqual({ startAt: "2026-10-05T08:00:00.000Z", endAt: "2026-10-05T09:00:00.000Z", time: "09:00" });
+  it("returns UTC instants that match local wall-clock times (GMT+1, June 2026)", () => {
+    const now = Date.parse("2026-06-12T07:00:00Z");
+    const [first] = getAvailableSlots({ date: "2026-06-15", durationMinutes: 60, schedule: schedule(), now });
+    expect(first).toEqual({ startAt: "2026-06-15T08:00:00.000Z", endAt: "2026-06-15T09:00:00.000Z", time: "09:00" });
   });
 
   it("keeps 09:00 local during Ramadan (GMT+0)", () => {

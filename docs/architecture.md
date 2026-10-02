@@ -40,9 +40,12 @@ and date it offers start times on the slot grid (multiples of
 3. it starts at least `minimum_booking_notice_minutes` after now;
 4. its date is between today and today + `booking_horizon_days` − 1.
 
-Wall-clock values are converted with `Intl` (`src/lib/scheduling/time.ts`), so
-Morocco's Ramadan switch from GMT+1 to GMT+0 is handled without hardcoded
-offsets. Rescheduling passes `excludeAppointmentId` so an appointment never
+Wall-clock values are converted with `Intl` (`src/lib/scheduling/time.ts`)
+using the runtime's IANA tz data — no offset is ever hardcoded. This matters:
+tzdata 2026c records Morocco's move from GMT+1 (with Ramadan GMT+0) to
+permanent GMT+0 on 2026-09-20. Older runtimes (e.g. Node 22 with tzdata 2025b)
+still apply GMT+1, so production must run a current Node (24.x, pinned in
+`.nvmrc` and `engines`), and Node should be kept updated to receive tz changes. Rescheduling passes `excludeAppointmentId` so an appointment never
 collides with itself and keeps its original duration.
 
 `src/lib/booking/service.ts` wraps the engine for the use cases (create,

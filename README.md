@@ -13,7 +13,7 @@ Standalone repository, independent from any other project.
 
 ## Run locally
 
-Requires Node.js 20.9+.
+Requires Node.js 24 (see `.nvmrc`). A current Node matters: Morocco's clock rules come from the runtime's timezone data.
 
 ```bash
 npm ci

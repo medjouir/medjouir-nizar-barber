@@ -19,6 +19,7 @@ describe("format", () => {
   });
 
   it("renders instants in the barber's timezone", () => {
-    expect(localDateTime("2026-10-05T13:00:00.000Z", "Africa/Casablanca")).toEqual({ date: "2026-10-05", time: "14:00" });
+    // June 2026: GMT+1 in every recent tzdata release.
+    expect(localDateTime("2026-06-15T13:00:00.000Z", "Africa/Casablanca")).toEqual({ date: "2026-06-15", time: "14:00" });
   });
 });

@@ -3,9 +3,12 @@ import { addDays, dayOfWeek, diffDays, instantToZoned, timeZoneOffset, zonedTime
 
 const TZ = "Africa/Casablanca";
 
+// Offsets come from the runtime's IANA tz data. Assertions use dates on which
+// every recent tzdata release agrees: GMT+1 in June 2026, GMT+0 in Ramadan 2026.
+// (tzdata 2026c records Morocco's move to permanent GMT+0 on 2026-09-20.)
 describe("timezone handling (Africa/Casablanca, no hardcoded offset)", () => {
-  it("uses GMT+1 outside Ramadan", () => {
-    expect(new Date(zonedTimeToInstant("2026-10-02", 10 * 60, TZ)).toISOString()).toBe("2026-10-02T09:00:00.000Z");
+  it("uses GMT+1 outside Ramadan (June 2026)", () => {
+    expect(new Date(zonedTimeToInstant("2026-06-15", 10 * 60, TZ)).toISOString()).toBe("2026-06-15T09:00:00.000Z");
   });
 
   it("switches to GMT+0 during Ramadan 2026", () => {
@@ -20,8 +23,8 @@ describe("timezone handling (Africa/Casablanca, no hardcoded offset)", () => {
   });
 
   it("finds the local date across midnight UTC", () => {
-    // 23:30 UTC on Oct 1 is 00:30 on Oct 2 in Casablanca (GMT+1).
-    expect(instantToZoned(Date.parse("2026-10-01T23:30:00Z"), TZ)).toEqual({ date: "2026-10-02", minutes: 30 });
+    // 23:30 UTC on Jun 1 is 00:30 on Jun 2 in Casablanca (GMT+1).
+    expect(instantToZoned(Date.parse("2026-06-01T23:30:00Z"), TZ)).toEqual({ date: "2026-06-02", minutes: 30 });
   });
 
   it("does calendar arithmetic", () => {
