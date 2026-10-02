@@ -1,4 +1,4 @@
-import { OCCUPYING_STATUSES } from "@/lib/scheduling/availability";
+import { OCCUPYING_STATUSES, type DateException, type WeeklyHours } from "@/lib/scheduling/availability";
 import type {
   Appointment,
   BarberSchedule,
@@ -113,6 +113,41 @@ export class MemoryStore implements BookingStore {
     if (!appointment) return null;
     appointment.status = status;
     return appointment;
+  }
+
+  async updateService(barberId: string, id: string, patch: Pick<Service, "name" | "durationMinutes" | "active">) {
+    const service = this.data.services.find((s) => s.barberId === barberId && s.id === id);
+    if (!service) return null;
+    Object.assign(service, patch);
+    return service;
+  }
+
+  async setHours(barberId: string, hours: WeeklyHours[]) {
+    this.schedule(barberId).hours = hours;
+  }
+
+  async addException(barberId: string, exception: DateException) {
+    const created = { ...exception, id: exception.id ?? this.ids.id() };
+    this.schedule(barberId).exceptions.push(created);
+    return created;
+  }
+
+  async removeException(barberId: string, id: string) {
+    const schedule = this.schedule(barberId);
+    const before = schedule.exceptions.length;
+    schedule.exceptions = schedule.exceptions.filter((e) => e.id !== id);
+    return schedule.exceptions.length < before;
+  }
+
+  async updateBarber(barberId: string, patch: Partial<PublicBarber>) {
+    const barber = this.data.barbers.find((b) => b.id === barberId);
+    if (!barber) return null;
+    Object.assign(barber, patch);
+    return barber;
+  }
+
+  private schedule(barberId: string) {
+    return (this.data.schedules[barberId] ??= { hours: [], exceptions: [] });
   }
 
   private overlaps(barberId: string, startAt: string, endAt: string, excludeId?: string) {

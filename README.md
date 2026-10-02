@@ -50,6 +50,14 @@ in and `/dashboard` shows the example barber. Never ship real clients on demo mo
 Public routes: `/` → `/nizar` (landing) → `/nizar/7jez` (booking flow) →
 `/manage/[token]` (confirmation, reschedule, cancel; `.../calendar` downloads an .ics).
 
+Barber routes (`/dashboard`): Lyouma, Planning (Nhar / Simana + appointment sheet),
+Clients (search, profile), Reglages (Profil, Services, Aw9at lkhedma, Ma disponiblech,
+Parametres reservation, Lien dyal reservation + QR, Compte).
+
+Demo settings changes are kept in a second cookie (`nizar_demo_cfg`), re-validated on
+every read. To stay under the browser's 4 KB cookie limit the demo keeps the visitor's
+6 most recent bookings and trims notes to 140 characters (demo only).
+
 ## Database setup (Supabase)
 
 Project: `cuunoajwxymacyfmnatm`. Run once, in order, in **Supabase → SQL Editor**:

@@ -6,6 +6,8 @@ export type PublicBarber = {
   id: string;
   slug: string;
   publicName: string;
+  salonName: string | null;
+  phone: string | null;
   address: string | null;
   city: string | null;
   mapsUrl: string | null;
@@ -79,4 +81,14 @@ export interface BookingStore {
   getAppointment(barberId: string, id: string): Promise<Appointment | null>;
   /** Marks a past or ongoing visit: completed ("Tsalat") or no_show ("Ma jach"). */
   setStatus(token: string, status: "completed" | "no_show"): Promise<Appointment | null>;
+
+  /* Barber configuration (inputs are validated by lib/settings before reaching the store). */
+  updateService(barberId: string, id: string, patch: Pick<Service, "name" | "durationMinutes" | "active">): Promise<Service | null>;
+  setHours(barberId: string, hours: WeeklyHours[]): Promise<void>;
+  addException(barberId: string, exception: DateException): Promise<DateException>;
+  removeException(barberId: string, id: string): Promise<boolean>;
+  updateBarber(
+    barberId: string,
+    patch: Partial<Pick<PublicBarber, "publicName" | "salonName" | "phone" | "address" | "city" | "mapsUrl" | "rules">>,
+  ): Promise<PublicBarber | null>;
 }

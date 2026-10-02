@@ -38,6 +38,7 @@ export type BookingRules = {
 export type WeeklyHours = { dayOfWeek: number; start: string; end: string; active?: boolean };
 
 export type DateException = {
+  id?: string;
   date: LocalDate;
   type: "available" | "blocked" | "closed";
   /** Both null/undefined = whole day. */

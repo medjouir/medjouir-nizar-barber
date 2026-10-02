@@ -22,7 +22,7 @@ async function load() {
   const tz = ws.barber.rules.timezone;
   const today = todayIn(tz, now);
   return {
-    name: ws.account.public_name,
+    name: ws.barber.publicName,
     tz,
     today,
     count: appointmentsOn(today, tz, ws.appointments).length,

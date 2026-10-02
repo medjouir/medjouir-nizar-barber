@@ -21,6 +21,8 @@ function makeStore() {
           id: "b1",
           slug: "nizar",
           publicName: "Nizar",
+          salonName: null,
+          phone: null,
           address: null,
           city: null,
           mapsUrl: null,
