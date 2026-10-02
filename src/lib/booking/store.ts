@@ -95,7 +95,7 @@ function applyConfig(data: ReturnType<typeof buildDemoData>, raw: string | undef
  * server-only service-role key), otherwise the demo store.
  */
 export async function getBookingStore(now = Date.now()): Promise<{ store: BookingStore; commit: () => Promise<void> }> {
-  if (isSupabaseConfigured() && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (isSupabaseConfigured()) {
     // Writes are already persisted by Supabase; nothing to commit.
     return { store: new SupabaseStore(createAdminClient()), commit: async () => {} };
   }

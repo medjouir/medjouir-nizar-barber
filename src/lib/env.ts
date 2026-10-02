@@ -9,12 +9,23 @@ function required(name: string, value: string | undefined): string {
   return value;
 }
 
+// The Vercel Supabase integration may inject either the legacy key names or the
+// newer publishable/secret ones; both work.
+function anonKey(): string | undefined {
+  return process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+}
+
+/** Server-only key. Never prefix with NEXT_PUBLIC_. */
+export function serviceRoleKey(): string | undefined {
+  return process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
+}
+
 export const publicEnv = {
   get supabaseUrl() {
     return required("NEXT_PUBLIC_SUPABASE_URL", process.env.NEXT_PUBLIC_SUPABASE_URL);
   },
   get supabaseAnonKey() {
-    return required("NEXT_PUBLIC_SUPABASE_ANON_KEY", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+    return required("NEXT_PUBLIC_SUPABASE_ANON_KEY", anonKey());
   },
   get siteUrl() {
     return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -22,9 +33,10 @@ export const publicEnv = {
 };
 
 /**
- * Supabase is wired only when its URL and key are set. Until then the app runs
- * on built-in example data (demo mode) and the barber area needs no login.
+ * Supabase is wired only when its URL and both keys are set. Until then the app
+ * runs on built-in example data (demo mode) and the barber area needs no login.
+ * Requiring all three avoids a half state (login enforced but demo data shown).
  */
 export function isSupabaseConfigured(): boolean {
-  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && anonKey() && serviceRoleKey());
 }
