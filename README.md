@@ -26,8 +26,9 @@ Checks:
 ```bash
 npm run typecheck
 npm run lint
-npm test          # unit tests: availability engine, booking service, phone, formatting
+npm test          # unit tests: availability engine, booking service, clients, settings…
 npm run build
+npm run test:e2e  # Playwright, definition of done (needs `npx playwright install chromium`)
 ```
 
 ## Environment variables
@@ -81,7 +82,8 @@ Sample data can be removed with `supabase/seed-reset.sql` and recreated by re-ru
 local PostgreSQL database and checks constraints, double-booking protection and RLS.
 Needs PostgreSQL 16 with `btree_gist`/`pgcrypto` and `PGHOST`/`PGPORT`/`PGUSER` set.
 
-See [docs/architecture.md](docs/architecture.md) for the scheduling and security decisions.
+See [docs/architecture.md](docs/architecture.md) for the scheduling and security decisions
+and [docs/qa.md](docs/qa.md) for the V0.1 QA report and known limits.
 
 ## Project structure
 

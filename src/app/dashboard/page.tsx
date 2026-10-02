@@ -113,7 +113,7 @@ function ProgramRow({ item }: { item: ProgramItem }) {
   const a = item.appointment;
   const status = a.status === "completed" || a.status === "no_show" ? STATUS_LABEL[a.status] : null;
   return (
-    <li className={cn("flex gap-4 rounded-card bg-surface p-card", a.status === "no_show" && "opacity-60")}>
+    <li className={cn("flex gap-4 rounded-card bg-surface p-card", a.status === "no_show" && "line-through decoration-subtle")}>
       <div className="w-14 shrink-0 tabular-nums">
         <p className="text-body font-semibold">{item.start}</p>
         <p className="text-secondary text-subtle">{item.end}</p>

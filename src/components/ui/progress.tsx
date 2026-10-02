@@ -1,12 +1,13 @@
 import { cn } from "@/lib/cn";
 
 /** Subtle booking progress bar — no "step X of Y" wording on purpose. */
-export function Progress({ value, className }: { value: number; className?: string }) {
+export function Progress({ value, label, className }: { value: number; label: string; className?: string }) {
   const pct = Math.round(Math.min(Math.max(value, 0), 1) * 100);
 
   return (
     <div
       role="progressbar"
+      aria-label={label}
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={pct}

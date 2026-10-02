@@ -152,7 +152,7 @@ function DayTimeline({ day, range, nowMin, onOpen }: { day: DayColumn; range: Sp
               className={cn(
                 "absolute inset-x-0 overflow-hidden rounded-[10px] border-l-[3px] bg-surface px-3 text-left transition-colors duration-200 active:bg-surface-raised",
                 item.status === "confirmed" ? "border-gold" : "border-subtle",
-                item.status === "no_show" && "opacity-55",
+                item.status === "no_show" && "line-through decoration-subtle",
                 compact ? "flex items-center gap-2 py-1" : "py-1.5",
               )}
               style={{ top: box.top + 1, height: box.height - 2 }}
@@ -215,7 +215,7 @@ function WeekTimeline({ days, range, onOpen }: { days: DayColumn[]; range: Span;
                 <div key={`w${w.start}`} className="absolute inset-x-0 rounded-[6px] bg-surface/50" style={place(w, range, px)} />
               ))}
               {d.blocks.map((b) => (
-                <div key={`b${b.start}`} aria-label="Ma disponiblech" className="absolute inset-x-0 rounded-[6px] border border-line bg-blocked" style={place(b, range, px)} />
+                <div key={`b${b.start}`} role="img" aria-label="Ma disponiblech" className="absolute inset-x-0 rounded-[6px] border border-line bg-blocked" style={place(b, range, px)} />
               ))}
               {d.items.map((item) => {
                 const box = place({ start: item.startMin, end: item.endMin }, range, px);
@@ -228,7 +228,7 @@ function WeekTimeline({ days, range, onOpen }: { days: DayColumn[]; range: Span;
                     className={cn(
                       "absolute inset-x-0 overflow-hidden rounded-[6px] px-1 pt-0.5 text-left text-[10px] tabular-nums",
                       item.status === "confirmed" ? "bg-gold/25 text-gold" : "bg-surface-raised text-muted",
-                      item.status === "no_show" && "opacity-55",
+                      item.status === "no_show" && "line-through decoration-subtle",
                     )}
                     style={{ top: box.top + 1, height: box.height - 2 }}
                   >

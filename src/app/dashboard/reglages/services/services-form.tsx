@@ -49,10 +49,12 @@ function ServiceRow({ service }: { service: Service }) {
   const durations = Array.from(new Set([...DURATION_CHOICES, service.durationMinutes])).sort((a, b) => a - b);
 
   return (
-    <li className={`rounded-card bg-surface p-card transition-opacity duration-200 ${active ? "" : "opacity-60"}`}>
+    <li className="rounded-card bg-surface p-card">
       <div className="flex items-center justify-between gap-4">
         <button type="button" onClick={() => setEditing((e) => !e)} className="min-w-0 flex-1 text-left" aria-expanded={editing}>
-          <span className="block truncate text-body font-semibold">{service.name}</span>
+          <span className={`block truncate text-body font-semibold transition-colors duration-200 ${active ? "text-fg" : "text-muted line-through decoration-subtle"}`}>
+            {service.name}
+          </span>
           <span className="block text-secondary text-muted">{formatDuration(service.durationMinutes)}</span>
         </button>
         <Toggle

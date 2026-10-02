@@ -15,7 +15,7 @@ export function StepHeader({ progress, onBack, backLabel = "Rjo3" }: { progress?
       >
         <ChevronLeft />
       </button>
-      {progress !== undefined && <Progress value={progress} className="flex-1" />}
+      {progress !== undefined && <Progress value={progress} label="7jez" className="flex-1" />}
     </div>
   );
 }
